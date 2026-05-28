@@ -1,4 +1,4 @@
-package com.acanx.meta.AppTest.java;
+package com.acanx.meta.AppTest;
 
 //package com.acanx.meta;
 //
