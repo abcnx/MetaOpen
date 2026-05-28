@@ -30,23 +30,6 @@ jobs:
       actions: read
       contents: read
 
-    env:
-      # 为 CodeQL autobuild 中的 forked javac 进程添加 JDK 模块访问权限
-      # 解决 CopierAstProcessor 注解处理器访问 jdk.compiler 内部 API 时的 IllegalAccessError
-      JAVA_TOOL_OPTIONS: >-
-        --add-opens jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
-        --add-opens jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED
-        --add-opens jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
-        --add-opens jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-        --add-opens jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED
-        --add-opens jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
-        --add-exports jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
-        --add-exports jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED
-        --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
-        --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-        --add-exports jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED
-        --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
-
     strategy:
       fail-fast: false
       matrix:
@@ -54,7 +37,7 @@ jobs:
           - language: actions
             build-mode: none
           - language: java-kotlin
-            build-mode: autobuild # 改为 autobuild 以更好地处理 Kotlin 和 Java 编译:cite[1]
+            build-mode: manual # 使用 manual 模式，在 Build with Maven 步骤中设置 JAVA_TOOL_OPTIONS
 
     steps:
     - name: Checkout repository
@@ -80,8 +63,24 @@ jobs:
 
     - name: Build with Maven (for Java/Kotlin analysis)
       if: matrix.language == 'java-kotlin' && matrix.build-mode == 'manual'
+      env:
+        JAVA_TOOL_OPTIONS: >-
+          --add-opens jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED
+          --add-opens jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED
+          --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
       run: mvn clean compile -q
 
+    # autobuild 模式下 CodeQL 自动检测并构建项目
+    # JAVA_TOOL_OPTIONS 仅在 Build with Maven 步骤中设置，避免影响 CodeQL CLI 自身的 JVM
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
